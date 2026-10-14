@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>大石川ライフシミュレーター</title>
+<style>
+:root{--bg:#f3efe6;--fg:#2a2a2a;--card:#fffdf8;--ac:#2f7d5b;--on:#fff;--mut:#7a7468;--bd:#ddd5c4;--s1:#cfe8f5;--s2:#e9d3ab;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d1c;--fg:#ece8df;--card:#262a28;--ac:#5fc79a;--on:#10201a;--mut:#9c978b;--bd:#3a3f3c;--s1:#2b4050;--s2:#5a4a34;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1d1c;--fg:#ece8df;--card:#262a28;--ac:#5fc79a;--on:#10201a;--mut:#9c978b;--bd:#3a3f3c;--s1:#2b4050;--s2:#5a4a34;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif}
+.scr{display:none;max-width:720px;margin:0 auto;padding:16px}.scr.on{display:block}
+h1{font-size:22px;margin:8px 0}.m{color:var(--mut);margin:0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:10px 0}
+.btn{display:block;width:100%;border:0;border-radius:10px;background:var(--ac);color:var(--on);font:inherit;font-weight:700;padding:13px;margin:12px 0;cursor:pointer}
+.btn small{display:block;font-weight:400;font-size:12px;opacity:.9;margin-top:2px}
+.btn.s{display:inline-block;width:auto;padding:5px 12px;margin:0 4px 0 0;font-size:13px;background:var(--card);color:var(--fg);border:1px solid var(--bd)}
+.btn.s.sel{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.drum{text-align:center;padding:40px 0}.drum div{font-size:30px;font-weight:700}#dc{font-size:64px!important;color:var(--ac);margin-top:12px}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}.pop{animation:pop .5s}
+dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0}dt{color:var(--mut)}dd{margin:0}
+#stage{position:relative;height:230px;border-radius:12px;overflow:hidden;background:linear-gradient(var(--s1) 0 62%,var(--s2) 62%)}
+.u{position:absolute;text-align:center;font-size:11px;transform:translateX(-50%);color:#222}
+canvas{image-rendering:pixelated;display:block;margin:0 auto}
+.row{display:grid;grid-template-columns:40px 1fr 28px;align-items:center;gap:8px;margin:5px 0}
+.bar{height:10px;background:var(--bd);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;transition:width .4s}
+#log{max-height:280px;overflow:auto}.li{padding:5px 0;border-bottom:1px dashed var(--bd);font-size:14px}.li small{color:var(--mut)}
+summary{cursor:pointer;color:var(--mut);padding:6px 0}
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+#ov.on{display:flex}#ov .card{max-width:480px;width:100%;max-height:100%;overflow:auto;margin:0}
+</style></head><body>
+
+<section class="scr on" id="start">
+<h1>🏫 大石川ライフシミュレーター</h1><p class="m">大石川中等教育学校で過ごす6年間</p>
+<div class="card"><b>ゲーム概要</b><br>12歳で入学し、18歳で卒業するまでの6年間を体験します。月が進むたびにイベントが起こり、あなたの選択で「健康・幸福・知識・関係」と所持金が変わります。目標は、希望の大学へ進学すること。名前もクラスも家庭環境も、選べません。</div>
+<div class="card"><b>大石川中等教育学校とは</b><br>探究活動と行事が盛んな、6年一貫の中等教育学校(ゲーム内の設定です)。中学と高校の区切りがなく、のびのびと学べる一方、自分で考えて動く力が問われます。</div>
+<div class="card"><b>イベントJSON(任意)</b><br><input type="file" id="jf" accept=".json,application/json"><label style="display:block;margin-top:6px"><input type="checkbox" id="jo"> 標準イベントを使わず、読み込んだJSONだけで遊ぶ</label><div id="jm" class="m"></div></div>
+<button class="btn" id="b1">入学する</button></section>
+
+<section class="scr" id="cls"><div class="card drum"><p class="m">クラス分け発表</p><div id="dn"></div><div id="dc"></div></div></section>
+
+<section class="scr" id="prof"><h1>プロフィール</h1><div class="card"><dl id="pl"></dl></div><div class="card" id="ps"></div>
+<button class="btn" id="b2">大石川ライフをスタート</button></section>
+
+<section class="scr" id="main">
+<div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><b id="ym"></b><span id="cl"></span></div>
+<div class="bar" style="margin:8px 0 10px"><i id="pg" style="background:var(--ac)"></i></div>
+<div id="sp"><button class="btn s sel" data-sp="1">1×</button><button class="btn s" data-sp="2">2×</button><button class="btn s" data-sp="5">5×</button><button class="btn s" id="pz">⏸ 停止</button></div></div>
+<div id="stage"></div>
+<div class="card" id="stt"></div>
+<div class="card"><b>人生の記録</b><div id="log"></div></div></section>
+
+<section class="scr" id="end"><h1>卒業</h1><div class="card" id="res"></div><button class="btn" id="b3">もう一度入学する</button></section>
+
+<div id="ov"><div class="card"></div></div>
+<script type="application/json" id="evj">
+[{"id":"event_club_soccer_01","title":"サッカー部の夏合宿","type":"fixed","trigger":{"grade":2,"month":8},"conditions":{"club":"サッカー部","minKnowledge":0,"minHealth":20},"description":"夏のサッカー部合同合宿の時期がやってきた！ハードな練習が予想されるが、参加する？","optionPickCount":2,"optionsPool":[{"id":"opt_soc_01","text":"限界まで追い込んで全力参加！","effect":{"knowledge":-5,"health":15,"happiness":10,"relationship":15,"money":-10000},"logText":"猛暑の中の合宿を乗り越え、体力と部員との絆が大きく高まった！"},{"id":"opt_soc_02","text":"マネージャー的にサポート中心で参加","effect":{"knowledge":5,"health":0,"happiness":5,"relationship":10,"money":-10000},"logText":"周囲を気遣う姿勢が見せられ、みんなから信頼された。"},{"id":"opt_soc_03","text":"体調不良を理由に見送る","effect":{"knowledge":10,"health":5,"happiness":-10,"relationship":-10,"money":0},"logText":"合宿を休み家で勉強したが、部活仲間との距離が少しできてしまった…"}]},
+{"id":"event_club_select","title":"入部する部活を決める","type":"fixed","trigger":{"grade":1,"month":5},"description":"部活動体験期間が終わり、入部届の提出日がやってきた。どの部に入る？","optionPickCount":6,"optionsPool":[{"text":"サッカー部に入る","effect":{"health":5,"relationship":4,"money":-3000},"logText":"サッカー部に入部した。","setFlags":{"club":"サッカー部"}},{"text":"吹奏楽部に入る","effect":{"happiness":3,"relationship":4,"money":-3000},"logText":"吹奏楽部に入部した。","setFlags":{"club":"吹奏楽部"}},{"text":"美術部に入る","effect":{"happiness":4,"knowledge":1},"logText":"美術部に入部した。","setFlags":{"club":"美術部"}},{"text":"科学部に入る","effect":{"knowledge":4,"relationship":1},"logText":"科学部に入部した。","setFlags":{"club":"科学部"}},{"text":"バスケットボール部に入る","effect":{"health":5,"relationship":4,"money":-3000},"logText":"バスケットボール部に入部した。","setFlags":{"club":"バスケットボール部"}},{"text":"部活には入らない","effect":{"knowledge":2,"happiness":1},"logText":"帰宅部として過ごすことにした。","setFlags":{"club":"帰宅部"}}]},
+{"id":"event_club_brass_01","title":"吹奏楽コンクール","type":"fixed","trigger":{"grade":2,"month":7},"conditions":{"club":"吹奏楽部"},"description":"夏のコンクールの季節。練習はどこまで本気でやる？","optionsPool":[{"text":"金賞を目指して猛練習","effect":{"knowledge":-3,"health":-3,"happiness":8,"relationship":12},"logText":"心が一つになる演奏ができた。"},{"text":"楽しむことを優先する","effect":{"happiness":6,"relationship":5},"logText":"のびのびと演奏を楽しんだ。"}]},
+{"id":"event_club_art_01","title":"校内美術展","type":"fixed","trigger":{"grade":2,"month":11},"conditions":{"club":"美術部"},"description":"校内美術展に作品を出すことになった。","optionsPool":[{"text":"大作に挑戦する","effect":{"knowledge":3,"health":-2,"happiness":8,"relationship":3,"money":-3000},"logText":"渾身の作品が展示された。"},{"text":"気軽に出品する","effect":{"happiness":4,"relationship":2},"logText":"肩の力を抜いて作品を出した。"}]},
+{"id":"event_club_sci_01","title":"科学コンテスト","type":"fixed","trigger":{"grade":3,"month":8},"conditions":{"club":"科学部"},"description":"夏の科学コンテストに出場するチャンスがある。","optionsPool":[{"text":"一人で全力で研究する","effect":{"knowledge":10,"health":-3,"happiness":5,"relationship":4},"logText":"研究が評価され、大きな自信になった。"},{"text":"仲間と共同研究する","effect":{"knowledge":6,"happiness":4,"relationship":8},"logText":"協力して成果をまとめた。"}]},
+{"id":"event_club_bask_01","title":"バスケ地区大会","type":"fixed","trigger":{"grade":3,"month":6},"conditions":{"club":"バスケットボール部"},"description":"地区大会のメンバー発表の日。","optionsPool":[{"text":"エースとして出場する","effect":{"health":5,"happiness":8,"relationship":10},"logText":"チームを引っ張り、大会を戦い抜いた。"},{"text":"控えで声を出して支える","effect":{"happiness":3,"relationship":7},"logText":"ベンチから全力で応援した。"}]},
+{"id":"auto_trip_01","title":"遠足","type":"fixed","trigger":{"grade":1,"month":9},"effect":{"happiness":4,"relationship":3,"money":-1500},"logText":"クラスで遠足に出かけ、思い出ができた。"},
+{"id":"auto_marathon","title":"マラソン大会","type":"random","trigger":{"month":2,"probability":0.5},"effect":{"health":2,"happiness":-1},"logText":"寒空の中、マラソン大会を走り切った。"},
+{"id":"auto_seat","title":"席替え","type":"random","repeat":true,"trigger":{"probability":0.06},"effect":{"relationship":2,"happiness":1},"logText":"席替えで、隣の席の子と仲良くなった。"},
+{"id":"auto_lunch","title":"昼休み","type":"random","repeat":true,"trigger":{"probability":0.06},"effect":{"happiness":2,"relationship":1},"logText":"昼休みに友達と校庭でおしゃべりした。"},
+{"id":"auto_rain","title":"雨の日","type":"random","repeat":true,"trigger":{"probability":0.05},"effect":{"health":-1,"happiness":-1},"logText":"帰り道、突然の雨で靴までびしょ濡れになった。"},
+{"id":"auto_teacher","title":"先生の雑談","type":"random","repeat":true,"trigger":{"probability":0.05},"effect":{"knowledge":2},"logText":"授業中の先生の雑談が、妙に印象に残った。"},
+{"id":"auto_shop","title":"購買","type":"random","repeat":true,"trigger":{"probability":0.05},"effect":{"happiness":1,"money":-500},"logText":"購買のパンを買って、友達と分け合った。"},
+{"id":"auto_library","title":"図書室","type":"random","repeat":true,"trigger":{"probability":0.05},"effect":{"knowledge":2,"happiness":1},"logText":"図書室で気になる本を見つけて夢中で読んだ。"},
+{"id":"auto_detour","title":"寄り道","type":"random","repeat":true,"trigger":{"probability":0.05},"effect":{"relationship":2,"happiness":2,"money":-800},"logText":"学校帰りに友達と寄り道をした。"},
+{"id":"auto_praise","title":"授業で褒められた","type":"random","repeat":true,"trigger":{"minGrade":2,"probability":0.04},"effect":{"knowledge":1,"happiness":2},"logText":"授業での発言を先生に褒められた。"},
+{"id":"auto_late","title":"夜更かし","type":"random","repeat":true,"trigger":{"probability":0.04},"effect":{"health":-2,"knowledge":-1},"logText":"動画に夢中になり、つい夜更かしした。"}]
+</script>
+
+<script>
+const $=s=>document.querySelector(s),R=a=>a[Math.random()*a.length|0],ri=(a,b)=>a+(Math.random()*(b-a+1)|0),cl=v=>Math.max(0,Math.min(100,v));
+const SUR=['佐藤','鈴木','高橋','田中','伊藤','渡辺','山本','中村','小林','加藤','吉田','山田','松本','井上','木村','清水'],
+MN=['蓮','湊','大和','悠真','陽翔','樹','颯太','朝陽'],FN=['陽葵','紬','結菜','凛','芽依','莉子','詩','美咲'],
+WD=['千代田区','中央区','港区','新宿区','文京区','台東区','墨田区','江東区','品川区','目黒区','大田区','世田谷区','渋谷区','中野区','杉並区','豊島区','北区','荒川区','板橋区','練馬区','足立区','葛飾区','江戸川区'],
+LV=['★☆☆☆☆ 苦しい','★★☆☆☆ ややきびしい','★★★☆☆ ふつう','★★★★☆ ゆとりがある','★★★★★ 裕福'],
+BG=['公立小学校出身。のびのび育った','私立小学校出身。受験を経験した','適性検査対策の塾に通っていた','帰国子女。海外生活の経験がある','地域のスポーツクラブで活動していた','読書好きで図書館の常連だった'],
+JOB=['会社員','公務員','医師','教師','自営業','エンジニア','看護師','研究者','飲食店経営','フリーランス'],
+KEY={h:'健康',w:'幸福',k:'知識',r:'関係',m:'所持金'},CO={h:'#e5646b',w:'#f0b43c',k:'#4a86d6',r:'#8a63c9'},
+FP=[['18%','14%'],['82%','14%'],['16%','52%'],['84%','52%'],['50%','4%']],
+SP=["...hhhhhh...","..hhhhhhhh..","..hssssssh..","..sesssses..","..ssssssss..","...ssssss...","..cccccccc..",".cccccccccc.",".sccccccccs.",".sccccccccs.","..cccccccc..","..pppppppp..","..ppp..ppp..","..ppp..ppp.."];
+let S,timer;
+const gr=()=>Math.min(6,(S.t/12|0)+1),mo=()=>(3+S.t)%12+1,yr=()=>2027+((3+S.t)/12|0);
+const go=id=>{document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==id));scrollTo(0,0)};
+const pers=g=>({g,s:R(['#f5d0b0','#e8b88f','#c98e63']),h:R(['#2b2118','#5a3a22','#1d1d1d','#8a4b2a','#3b2f4a']),c:R(['#4a86d6','#e5646b','#5fb37a','#f0b43c','#8a63c9','#eeeeee'])});
+function spr(o,sc){const c=document.createElement('canvas');c.width=12*sc;c.height=14*sc;const x=c.getContext('2d');
+ SP.forEach((row,y)=>[...row].forEach((ch,i)=>{if(ch=='.')return;let k=ch;if(o.g&&y>=3&&y<=5&&(i==2||i==9)&&ch=='s')k='h';x.fillStyle={h:o.h,s:o.s,e:'#222',c:o.c,p:'#3b4a6b'}[k];x.fillRect(i*sc,y*sc,sc,sc)}));return c}
+
+// ---- クラス分け ----
+function draw(){go('cls');const g=R([0,1]),fin={n:R(SUR)+' '+R(g?FN:MN),cls:R('ABCD'),f:!!g};let i=0;
+ (function t(){$('#dn').textContent=R(SUR)+' '+R(MN);$('#dc').textContent=R('ABCD')+'組';
+  if(++i>24){$('#dn').textContent=fin.n;$('#dc').textContent=fin.cls+'組';$('#dc').classList.add('pop');gen(fin);setTimeout(()=>{$('#dc').classList.remove('pop');go('prof')},1700)}else setTimeout(t,50+i*7)})()}
+// ---- プロフィール ----
+function gen(f){const lv=ri(1,5),bm=ri(1,12),by=bm>=4?2014:2015,st={h:ri(30,70),w:ri(30,70),k:ri(30,50),r:ri(0,10)};
+ S={t:0,sp:1,p:{...pers(f.f),n:f.n,cls:f.cls},lv,st,$:lv*8000+ri(0,5000),al:lv*1000+2000,log:[],used:new Set(),fs:[...Array(5)].map(()=>({...pers(R([0,1])),n:R(R([0,1])?FN:MN)})),fn:-1,fl:{club:''}};
+ $('#pl').innerHTML=[['名前',f.n],['クラス',f.cls+'組'],['性別',f.f?'女':'男'],['誕生日',`${by}年${bm}月${ri(1,28)}日`],['住所','東京都'+R(WD)],['家の暮らし',LV[lv-1]],['これまでの経歴',R(BG)],['両親の仕事',`父:${R(JOB)} / 母:${R(JOB)}`]].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+ $('#ps').innerHTML='<b>初期ステータス</b><br>'+['h','w','k','r'].map(k=>KEY[k]+' '+st[k]).join(' ／ ')+`<br>所持金 ¥${S.$.toLocaleString()}`}
+// ---- メイン ----
+function start(){go('main');log('大石川中等教育学校に入学しました。');hud();loop()}
+function log(x,ch){S.log.unshift({d:`${gr()}年${mo()}月`,x,ch});const a=S.log,li=l=>`<div class="li"><b>${l.d}</b> ${l.x}${l.ch?` <small>(${l.ch})</small>`:''}</div>`;
+ $('#log').innerHTML=a.slice(0,6).map(li).join('')+(a.length>6?`<details ${S.op?'open':''} ontoggle="S.op=this.open"><summary>過去の記録 (${a.length-6}件)</summary>${a.slice(6).map(li).join('')}</details>`:'')}
+function hud(){const s=S.st;$('#ym').textContent=`${gr()}年生 ・ ${yr()}年${mo()}月`;$('#cl').textContent=`${S.p.cls}組 ${S.p.n}${S.fl.club?' ・'+S.fl.club:''}`;$('#pg').style.width=Math.min(100,S.t/70*100)+'%';
+ $('#stt').innerHTML=['h','w','k','r'].map(k=>`<div class="row"><span>${KEY[k]}</span><div class="bar"><i style="width:${s[k]}%;background:${CO[k]}"></i></div><b>${s[k]}</b></div>`).join('')+`<div style="margin-top:6px">💰 所持金 <b>¥${S.$.toLocaleString()}</b></div>`;fr()}
+function fr(){const n=Math.min(5,Math.round(S.st.r/20));if(n===S.fn)return;S.fn=n;const g=$('#stage');g.innerHTML='';
+ const u=(c,x,y,l,b)=>{const d=document.createElement('div');d.className='u';d.style.left=x;d.style[b?'bottom':'top']=y;d.append(c);const s=document.createElement('div');s.textContent=l;d.append(s);g.append(d)};
+ u(spr(S.p,8),'50%','8px','自分',1);S.fs.slice(0,n).forEach((f,i)=>u(spr(f,4),FP[i][0],FP[i][1],f.n))}
+function loop(){clearTimeout(timer);if(S.busy||S.pause||S.end)return;timer=setTimeout(step,1400/S.sp)}
+function step(){S.t++;S.$+=S.al;const s=S.st;if(Math.random()<.6)s.k=cl(s.k+1);if(Math.random()<.4)s.h=cl(s.h+ri(-2,1));if(Math.random()<.4)s.w=cl(s.w+ri(-2,2));
+ if(S.t%12==0)log(`${gr()}年生に進級しました。`);hud();if(S.t>=70)return exam();if(ev())return;loop()}
+const KS={knowledge:'k',health:'h',happiness:'w',relationship:'r',money:'m'};
+function apo(f){const o=[];for(const k in f){const a=KS[k],b=+f[k];if(!a||!b)continue;if(a=='m')S.$=Math.max(0,S.$+b);else S.st[a]=cl(S.st[a]+b);o.push(KEY[a]+(b>0?'+':'')+b)}return o.join(' ')}
+const fxs=f=>Object.keys(f||{}).filter(k=>KS[k]&&+f[k]).map(k=>KEY[KS[k]]+(f[k]>0?'+':'')+f[k]).join(' ')||'変化なし';
+const fxl=c=>c.chance!=null?`${Math.round(c.chance*100)}%で ${fxs(c.effect)} / 失敗: ${fxs(c.failEffect)}`:fxs(c.effect);
+function ok(e){const t=e.trigger||{},c=e.conditions||{},g=gr();
+ if(t.grade!=null&&t.grade!=g||t.month!=null&&t.month!=mo()||t.minGrade!=null&&g<t.minGrade||t.maxGrade!=null&&g>t.maxGrade)return;
+ for(const k in c){const v=c[k],m=/^(min|max)(.+)$/.exec(k);if(m){const f=m[2].toLowerCase(),x=f=='money'?S.$:S.st[KS[f]];if(x==null)continue;if(m[1]=='min'?x<v:x>v)return}else if((S.fl[k]??false)!==v)return}return 1}
+function ev(){const el=EV.filter(e=>(e.repeat||!S.used.has(e.id))&&ok(e)),fx=el.filter(e=>e.type=='fixed'),rn=el.filter(e=>e.type!='fixed'&&Math.random()<(e.trigger?.probability??.1)),e=fx[0]||(rn.length?R(rn):null);
+ if(!e)return 0;S.used.add(e.id);if(!(e.optionsPool||[]).length){log(`【${e.title}】${e.logText||e.description||''}`,apo(e.effect||{}));hud();loop();return 1}S.busy=1;const op=[...e.optionsPool].sort(()=>Math.random()-.5).slice(0,e.optionPickCount||e.optionsPool.length),o=$('#ov .card');
+ o.innerHTML=`<h2 style="margin:0 0 6px;font-size:18px">${e.title}</h2><p>${e.description||''}</p>`+op.map((c,i)=>`<button class="btn" data-i="${i}">${c.text}<small>${fxl(c)}</small></button>`).join('');$('#ov').classList.add('on');
+ o.onclick=q=>{const b=q.target.closest('[data-i]');if(!b)return;const c=op[b.dataset.i];let f=c.effect||{},t=c.logText;if(c.chance!=null&&Math.random()>=c.chance){f=c.failEffect||{};t=c.failLog||t}
+  const ch=apo(f);Object.assign(S.fl,c.setFlags);log(`【${e.title}】${t||''}`,ch);$('#ov').classList.remove('on');S.busy=0;hud();loop()};return 1}
+function exam(){S.end=1;const s=S.st;S.t=70;hud();const sc=s.k*.6+s.r*.12+s.h*.12+s.w*.06+ri(0,14)+(S.lv-3);
+ const [u,m]=sc>=62?['難関大学に合格！','探究も受験も走り切った。大石川で磨いた力が花開いた。']:sc>=50?['有名大学に合格！','努力が実を結び、希望の進路を掴んだ。']:sc>=38?['一般大学に合格','それぞれのペースで、新しい学びの場へ進む。']:['浪人して再挑戦','悔しさはあるが、6年間の経験は確かな財産だ。'];
+ const t=[s.r>=70&&'仲間に支えられた6年間でした。',s.w<30&&'心の余裕を失う日々も多かった。',s.h<30&&'体調管理が課題として残った。',s.k>=80&&'積み重ねた学びが大きな力になった。'].filter(Boolean).join('');
+ $('#res').innerHTML=`<h2 style="margin:0">${u}</h2><p>${m}${t}</p><p>最終ステータス: ${['h','w','k','r'].map(k=>KEY[k]+' '+s[k]).join(' / ')}<br>所持金 ¥${S.$.toLocaleString()}</p>`;go('end')}
+
+// ---- イベントデータ: c=[選択肢, 変化(h健康 w幸福 k知識 r関係 m所持金), 結果, (成功率, 失敗時変化, 失敗時結果)] / g=最低学年 / mo=発生月 ----
+const LEG=[
+{t:'部活動見学',x:'放課後、各部が新入生を勧誘している。',c:[['運動部に入る','h+6 r+4 w+2 m-4000','運動部に入部。毎日くたくただ。'],['文化部に入る','k+3 r+3 w+3 m-2000','文化部で居心地のいい仲間ができた。'],['帰宅部で過ごす','k+2 w+1 r-1','自分の時間を大切にすることにした。']]},
+{t:'定期テスト前日',x:'明日は定期テスト。まだ範囲が終わっていない。',c:[['徹夜で詰め込む','k+6 h-6 w-2','徹夜で乗り切ったがふらふらだ。'],['早めに寝て朝に備える','k+3 h+2','睡眠をとって本番に臨んだ。'],['友達と通話しながら勉強','k+2 r+4 w+2','おしゃべり半分だが案外はかどった。']]},
+{t:'友達の相談',x:'友達が「ちょっと聞いてほしい」と話しかけてきた。',c:[['最後まで聞く','r+6 w+1 h-1','じっくり話を聞き、感謝された。'],['忙しいと断る','r-4 k+1','話は聞けなかった。少し気まずい。']]},
+{t:'文化祭',mo:10,x:'文化祭の季節。クラス企画の実行委員を決めることに。',c:[['実行委員に立候補','r+7 w+4 k-1 h-3','実行委員として奔走し、クラスが一つになった。'],['当日を楽しむ','w+4 r+2 m-2500','屋台めぐりを満喫した。'],['展示の準備だけ手伝う','r+3 k+1','裏方として役に立てた。']]},
+{t:'体育祭',mo:6,x:'体育祭の種目決め。リレーの選手を募集中。',c:[['リレーに出る','h+3 r+4 w+3','全力で走り抜けた。'],['応援団で声を出す','r+5 w+3 h-1','声をからして応援した。'],['係に回る','w-1 k+1','裏方で静かに支えた。']]},
+{t:'塾に通う？',g:3,x:'周りで塾に通う人が増えてきた。',c:[['通う(月謝あり)','k+7 h-3 m-30000','塾に通い、成績が伸びてきた。'],['学校の課題を丁寧にやる','k+3 w+1','独学で堅実に進めた。'],['通わない','w+2 k-1','のんびり過ごすことにした。']]},
+{t:'探究活動',g:2,x:'大石川らしい探究の時間。テーマ設定が始まった。',c:[['社会課題に本気で挑む','k+6 r+3 h-2 w+1','調査とまとめに熱中し、発表で高評価を得た。'],['友達と共同研究','r+6 k+3','協力して面白い成果が出た。'],['無難なテーマで済ませる','k+2 h+1','手堅くまとめた。']]},
+{t:'風邪をひいた',x:'朝から熱っぽい。',c:[['休んで療養する','h+4 k-2','しっかり休んで回復した。'],['無理して登校する','h-6 k+1 r-1','悪化させてしまった。']]},
+{t:'お年玉',mo:1,x:'お正月、親戚からお年玉をもらった。',c:[['全部貯金する','m+25000 w+1','貯金が増えて安心した。'],['参考書を買う','k+3 m+12000 w+1','少し賢くなった気がする。'],['友達と遊びに使う','w+5 r+3 m+8000','思いきり遊んだ。']]},
+{t:'修学旅行',g:3,mo:11,x:'待ちに待った修学旅行。自由行動の班はどうする？',c:[['友達と行きたい所へ','w+6 r+5 m-8000','一生の思い出になった。'],['歴史を学ぶコースに','k+4 w+2 m-3000','見学を通じて学びが深まった。']]},
+{t:'気になる人',g:3,x:'同じ学年に気になる人ができた。',c:[['思い切って告白','r+8 w+8','告白成功！毎日が輝いて見える。',.45,'w-6 r-1','ふられてしまった…。'],['友達として仲良くする','r+3 w+1','自然に距離が縮まった。'],['勉強に集中する','k+3 w-1','恋より勉強の日々。']]},
+{t:'スマホ時間',x:'気づけば夜中までスマホを見ていた。',c:[['アプリを制限する','k+3 w-2 h+2','生活リズムが整った。'],['気にせず楽しむ','w+5 k-4 h-3','楽しいが、睡眠不足になった。']]},
+{t:'合唱コンクール',mo:12,x:'クラスで合唱コンクールの練習が始まった。',c:[['指揮者に立候補','r+6 w+3 h-2','みんなをまとめきった。'],['歌で全力を出す','r+4 w+3','声が揃う瞬間に感動した。'],['練習をサボる','w+1 r-5','クラスの雰囲気が少し冷たくなった。']]},
+{t:'生徒会選挙',g:3,x:'生徒会選挙の季節。立候補する人を募集している。',c:[['立候補する','r+8 w+4 k-1','当選！生徒会で活躍した。',.5,'w-3 r+1','落選…でも挑戦は財産になった。'],['応援演説をする','r+4 w+2','友人の当選に貢献した。'],['投票だけする','','静かに投票を済ませた。']]},
+{t:'友達とケンカ',x:'些細なことから友達と言い合いになった。',c:[['自分から謝る','r+4 w+1','仲直りして、前より仲が深まった。'],['しばらく距離を置く','r-5 w-2 k+1','気まずい日々が続いた。']]},
+{t:'英語スピーチ大会',g:2,x:'校内の英語スピーチ大会、出場者を募集中。',c:[['出場する','k+4 r+2 w+2 h-1','緊張したが、やり切った。'],['観客として楽しむ','k+1 w+1','刺激をもらった。']]},
+{t:'お小遣い交渉',x:'親にお小遣いアップを交渉してみよう。',c:[['成績を条件に交渉','m+10000 k+2 w+1','「結果を出したらね」と約束してくれた。'],['お手伝いで稼ぐ','m+6000 r+2','家の仕事を手伝って収入を得た。']]},
+{t:'志望校を考える',g:5,x:'進路面談。そろそろ志望校を決める時期だ。',c:[['難関大学を目指す','k+5 w-3 h-2','高い目標を掲げ、気合が入った。'],['自分に合う大学を探す','w+3 k+2','オープンキャンパスで視野が広がった。'],['まだ決めない','w+2 k-1','もう少し考えることにした。']]},
+{t:'模試の結果',g:5,x:'全国模試の結果が返ってきた。',c:[['弱点を分析し直す','k+6 w-2','苦手を一つずつ潰していった。'],['気分転換に遊びに出る','w+4 r+3 k-2','リフレッシュできたが、少し不安も。']]}
+];
+// ---- イベントレジストリ(標準イベントも同じ形式に変換して登録) ----
+const MK={h:'health',w:'happiness',k:'knowledge',r:'relationship',m:'money'};
+const toFx=s=>{const o={};s.replace(/([hwkrm])([+-]\d+)/g,(_,a,b)=>o[MK[a]]=+b);return o};
+let EV=[];
+function reg(a){let n=0;if(!Array.isArray(a))return 0;a.forEach(e=>{if(e&&e.id&&e.title&&(e.optionsPool?.length||e.effect||e.logText)){EV=EV.filter(x=>x.id!==e.id);EV.push(e);n++}});return n}
+reg(LEG.slice(1).map((e,i)=>({id:'std_'+i,title:e.t,type:'random',trigger:{minGrade:e.g||1,month:e.mo,probability:e.mo?.4:.02},description:e.x,optionsPool:e.c.map(c=>({text:c[0],effect:toFx(c[1]),logText:c[2],chance:c[3],failEffect:c[4]!=null?toFx(c[4]):null,failLog:c[5]}))})));
+reg(JSON.parse($('#evj').textContent));
+fetch('events.json',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(a=>{$('#jm').textContent=`events.json から${reg(a)}件を読み込みました(合計${EV.length}件)`}).catch(()=>{$('#jm').textContent='events.json が見つからないため、内蔵イベントで遊びます'});
+$('#jf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const a=JSON.parse(r.result);if($('#jo').checked)EV=[];const n=reg(a);$('#jm').textContent=`${n}件のイベントを読み込みました(合計${EV.length}件)`}catch(x){$('#jm').textContent='読み込みに失敗しました。JSONの形式を確認してください'}};r.readAsText(f)};
+$('#b1').onclick=draw;$('#b2').onclick=start;$('#b3').onclick=()=>go('start');
+$('#sp').onclick=e=>{const b=e.target.closest('button');if(!b||!S)return;if(b.id=='pz'){S.pause=!S.pause;b.textContent=S.pause?'▶ 再開':'⏸ 停止';return S.pause?clearTimeout(timer):loop()}
+ S.sp=+b.dataset.sp;document.querySelectorAll('[data-sp]').forEach(x=>x.classList.toggle('sel',x==b));loop()};
+</script></body></html>
